@@ -4,6 +4,7 @@ import android.content.Context;
 import com.android.volley.Request;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import android.os.Build;
 
 public class Webhook {
     private static final String URL = "https://script.google.com/macros/s/AKfycbzSgyXtB82ORLJ1QNQohPBCQnE9QFH4xoGiUmAJXisCv-R7tamO9OFj0aBO-SpTH1sN/exec";
@@ -13,7 +14,7 @@ public class Webhook {
         String encodedMsg = message == null ? "" : message.replace("\"", "'");
 
         String jsonBody = "{\"appName\":\"" + appName + "\",\"title\":\"" + encodedTitle
-                + "\",\"message\":\"" + encodedMsg + "\"}";
+        + "\",\"message\":\"" + encodedMsg + "\",\"device\":\"" + Build.MODEL + "\"}";
 
         StringRequest request = new StringRequest(Request.Method.POST, URL,
                 response -> {},
