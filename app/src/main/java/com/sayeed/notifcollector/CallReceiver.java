@@ -46,7 +46,7 @@ public class CallReceiver extends BroadcastReceiver {
                 cursor.close();
             }
         } catch (SecurityException e) {
-            // permission না থাকলে skip
+            // Skip if permission is not granted
         }
     }
 }
