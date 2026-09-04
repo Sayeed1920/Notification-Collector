@@ -17,8 +17,11 @@ public class CallReceiver extends BroadcastReceiver {
         if (state == null) return;
 
         if (state.equals(TelephonyManager.EXTRA_STATE_IDLE) && !lastState.isEmpty()) {
-            readLastCallLog(context);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                readLastCallLog(context);
+            }, 1000);
         }
+
         lastState = state;
     }
 
@@ -26,23 +29,52 @@ public class CallReceiver extends BroadcastReceiver {
         try {
             Uri uri = CallLog.Calls.CONTENT_URI;
             Cursor cursor = context.getContentResolver().query(
-                    uri, null, null, null, CallLog.Calls.DATE + " DESC LIMIT 1");
+                    uri,
+                    null,
+                    null,
+                    null,
+                    CallLog.Calls.DATE + " DESC LIMIT 1"
+            );
+
             if (cursor != null && cursor.moveToFirst()) {
-                String number = cursor.getString(cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER));
-                int type = cursor.getInt(cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE));
-                long duration = cursor.getLong(cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION));
+                String number = cursor.getString(
+                        cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+                );
+
+                int type = cursor.getInt(
+                        cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
+                );
+
+                long duration = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
+                );
 
                 String typeStr;
+
                 switch (type) {
-                    case CallLog.Calls.INCOMING_TYPE: typeStr = "Incoming"; break;
-                    case CallLog.Calls.OUTGOING_TYPE: typeStr = "Outgoing"; break;
-                    case CallLog.Calls.MISSED_TYPE:   typeStr = "Missed";   break;
-                    default:                           typeStr = "Other";
+                    case CallLog.Calls.INCOMING_TYPE:
+                        typeStr = "Incoming";
+                        break;
+
+                    case CallLog.Calls.OUTGOING_TYPE:
+                        typeStr = "Outgoing";
+                        break;
+
+                    case CallLog.Calls.MISSED_TYPE:
+                        typeStr = "Missed";
+                        break;
+
+                    default:
+                        typeStr = "Other";
                 }
 
-                Webhook.send(context, "PhoneCall",
+                Webhook.send(
+                        context,
+                        "PhoneCall",
                         typeStr + " Call",
-                        "Number: " + number + ", Duration: " + duration + "s");
+                        "Number: " + number + ", Duration: " + duration + "s"
+                );
+
                 cursor.close();
             }
         } catch (SecurityException e) {
