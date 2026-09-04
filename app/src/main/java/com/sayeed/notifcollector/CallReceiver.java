@@ -4,21 +4,28 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.net.Uri;
 import android.provider.CallLog;
 import android.telephony.TelephonyManager;
 
 public class CallReceiver extends BroadcastReceiver {
+
     private static String lastState = "";
 
     @Override
     public void onReceive(Context context, Intent intent) {
+
         String state = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
+
         if (state == null) return;
 
-        if (state.equals(TelephonyManager.EXTRA_STATE_IDLE) && !lastState.isEmpty()) {
+        if (state.equals(TelephonyManager.EXTRA_STATE_IDLE)
+                && !lastState.isEmpty()) {
+
+            final PendingResult pendingResult = goAsync();
+
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 readLastCallLog(context);
+                pendingResult.finish();
             }, 1000);
         }
 
@@ -26,17 +33,24 @@ public class CallReceiver extends BroadcastReceiver {
     }
 
     private void readLastCallLog(Context context) {
+
         try {
-            Uri uri = CallLog.Calls.CONTENT_URI;
             Cursor cursor = context.getContentResolver().query(
-                    uri,
+                    CallLog.Calls.CONTENT_URI,
+                    new String[]{
+                            CallLog.Calls.NUMBER,
+                            CallLog.Calls.TYPE,
+                            CallLog.Calls.DURATION
+                    },
                     null,
                     null,
-                    null,
-                    CallLog.Calls.DATE + " DESC LIMIT 1"
+                    CallLog.Calls.DATE + " DESC"
             );
 
-            if (cursor != null && cursor.moveToFirst()) {
+            if (cursor == null) return;
+
+            if (cursor.moveToFirst()) {
+
                 String number = cursor.getString(
                         cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
                 );
@@ -51,21 +65,14 @@ public class CallReceiver extends BroadcastReceiver {
 
                 String typeStr;
 
-                switch (type) {
-                    case CallLog.Calls.INCOMING_TYPE:
-                        typeStr = "Incoming";
-                        break;
-
-                    case CallLog.Calls.OUTGOING_TYPE:
-                        typeStr = "Outgoing";
-                        break;
-
-                    case CallLog.Calls.MISSED_TYPE:
-                        typeStr = "Missed";
-                        break;
-
-                    default:
-                        typeStr = "Other";
+                if (type == CallLog.Calls.MISSED_TYPE) {
+                    typeStr = "Missed";
+                } else if (type == CallLog.Calls.INCOMING_TYPE) {
+                    typeStr = "Incoming";
+                } else if (type == CallLog.Calls.OUTGOING_TYPE) {
+                    typeStr = "Outgoing";
+                } else {
+                    typeStr = "Other";
                 }
 
                 Webhook.send(
@@ -74,11 +81,12 @@ public class CallReceiver extends BroadcastReceiver {
                         typeStr + " Call",
                         "Number: " + number + ", Duration: " + duration + "s"
                 );
-
-                cursor.close();
             }
+
+            cursor.close();
+
         } catch (SecurityException e) {
-            // Skip if permission is not granted
+            // Permission not available
         }
     }
 }
